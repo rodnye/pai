@@ -1,0 +1,1595 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>IA-1</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%235b5bd6'/%3E%3Ctext x='16' y='22' font-size='16' font-family='sans-serif' font-weight='700' text-anchor='middle' fill='white'%3EIA%3C/text%3E%3C/svg%3E"
+    />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #ffffff;
+        --panel: #f6f6f9;
+        --text: #1c1c21;
+        --muted: #6b6b76;
+        --border: #e2e2e9;
+        --accent: #5b5bd6;
+        --accent-text: #ffffff;
+        --user: #ececf4;
+        --danger: #d1383d;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #17171b;
+          --panel: #1f1f25;
+          --text: #ececf1;
+          --muted: #9a9aa6;
+          --border: #2e2e38;
+          --accent: #8080f2;
+          --accent-text: #0f0f14;
+          --user: #2a2a33;
+          --danger: #ff6b6f;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        font:
+          15px/1.55 system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+      button,
+      input,
+      textarea {
+        font: inherit;
+        color: inherit;
+      }
+      button {
+        cursor: pointer;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .primary {
+        background: var(--accent);
+        color: var(--accent-text);
+        border: 0;
+        border-radius: 10px;
+        padding: 9px 14px;
+        font-weight: 600;
+      }
+      .primary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .ghost {
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 8px 12px;
+      }
+      .ghost:hover {
+        background: var(--panel);
+      }
+      .small {
+        padding: 4px 9px;
+        font-size: 13px;
+      }
+
+      /* ---------- Login ---------- */
+      #login-view {
+        min-height: 100%;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+      .card {
+        width: min(380px, 100%);
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 28px;
+        display: grid;
+        gap: 12px;
+      }
+      .card h1 {
+        margin: 0;
+        font-size: 26px;
+        letter-spacing: -0.02em;
+      }
+      .card p {
+        margin: 0;
+      }
+      .tabs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 4px;
+      }
+      .tabs button {
+        border: 0;
+        background: transparent;
+        border-radius: 7px;
+        padding: 7px;
+      }
+      .tabs button[aria-selected="true"] {
+        background: var(--accent);
+        color: var(--accent-text);
+        font-weight: 600;
+      }
+      label {
+        display: grid;
+        gap: 4px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      label input {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 9px 11px;
+        font-size: 15px;
+        color: var(--text);
+      }
+      label input:focus,
+      textarea:focus {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+      .error {
+        color: var(--danger);
+        font-size: 13px;
+      }
+
+      /* ---------- App shell ---------- */
+      .app {
+        height: 100%;
+        display: flex;
+      }
+      #sidebar {
+        width: 268px;
+        flex: none;
+        background: var(--panel);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        padding: 14px;
+        gap: 12px;
+      }
+      .brand {
+        font-weight: 800;
+        font-size: 18px;
+        letter-spacing: -0.02em;
+      }
+      #chat-list {
+        flex: 1;
+        overflow-y: auto;
+        display: grid;
+        gap: 2px;
+        align-content: start;
+      }
+      .chat-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        border-radius: 8px;
+      }
+      .chat-item:hover,
+      .chat-item.active {
+        background: var(--user);
+      }
+      .chat-item button.open {
+        flex: 1;
+        min-width: 0;
+        text-align: left;
+        background: none;
+        border: 0;
+        padding: 8px 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .chat-item button.del {
+        background: none;
+        border: 0;
+        color: var(--muted);
+        padding: 6px 9px;
+        opacity: 0;
+      }
+      .chat-item:hover button.del {
+        opacity: 1;
+      }
+      .user-box {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        border-top: 1px solid var(--border);
+        padding-top: 12px;
+      }
+      .user-box span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .main {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+      }
+      .topbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--border);
+      }
+      .topbar .spacer {
+        flex: 1;
+      }
+      #toggle-sidebar {
+        display: none;
+      }
+      #thread {
+        flex: 1;
+        overflow-y: auto;
+        padding: 24px 16px;
+        scroll-behavior: smooth;
+      }
+      .column {
+        max-width: 760px;
+        margin: 0 auto;
+        display: grid;
+        gap: 20px;
+      }
+      .empty {
+        text-align: center;
+        margin-top: 18vh;
+      }
+      .empty h2 {
+        font-size: 28px;
+        letter-spacing: -0.02em;
+        margin: 0 0 6px;
+      }
+
+      .row {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      .row.user {
+        justify-content: flex-end;
+      }
+      .avatar {
+        flex: none;
+        width: 30px;
+        height: 30px;
+        border-radius: 9px;
+        background: var(--accent);
+        color: var(--accent-text);
+        display: grid;
+        place-items: center;
+        font-size: 12px;
+        font-weight: 800;
+      }
+      .msg {
+        white-space: pre-wrap;
+        word-break: break-word;
+        min-width: 0;
+      }
+      .msg[data-role="user"] {
+        background: var(--user);
+        border-radius: 16px;
+        padding: 10px 14px;
+        max-width: 80%;
+        max-height: 320px;
+        overflow: auto;
+      }
+      .row.assistant .stack {
+        min-width: 0;
+        display: grid;
+        gap: 6px;
+      }
+      .actions {
+        display: flex;
+        gap: 6px;
+      }
+      .actions button {
+        background: none;
+        border: 0;
+        color: var(--muted);
+        font-size: 12px;
+        padding: 2px 6px;
+        border-radius: 6px;
+      }
+      .actions button:hover {
+        background: var(--panel);
+        color: var(--text);
+      }
+      .dot {
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        margin-right: 4px;
+        border-radius: 50%;
+        background: var(--muted);
+        animation: blink 1.1s infinite ease-in-out;
+      }
+      .dot:nth-child(2) {
+        animation-delay: 0.18s;
+      }
+      .dot:nth-child(3) {
+        animation-delay: 0.36s;
+      }
+      @keyframes blink {
+        0%,
+        80%,
+        100% {
+          opacity: 0.25;
+        }
+        40% {
+          opacity: 1;
+        }
+      }
+
+      .banner {
+        margin: 0 auto 8px;
+        width: min(760px, calc(100% - 32px));
+        background: color-mix(in srgb, var(--danger) 12%, var(--bg));
+        border: 1px solid var(--danger);
+        color: var(--danger);
+        border-radius: 10px;
+        padding: 8px 12px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 14px;
+      }
+      .composer {
+        padding: 8px 16px 16px;
+      }
+      .box {
+        max-width: 760px;
+        margin: 0 auto;
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 8px 8px 8px 14px;
+      }
+      .box textarea {
+        flex: 1;
+        resize: none;
+        border: 0;
+        background: transparent;
+        padding: 7px 0;
+        max-height: 220px;
+        line-height: 1.5;
+      }
+      .box textarea:focus {
+        outline: none;
+      }
+      .composer .muted {
+        text-align: center;
+        margin: 8px 0 0;
+      }
+
+      /* ---------- Debug ---------- */
+      #debug {
+        width: 320px;
+        flex: none;
+        border-left: 1px solid var(--border);
+        background: var(--panel);
+        padding: 14px;
+        overflow-y: auto;
+        display: grid;
+        gap: 12px;
+        align-content: start;
+        font-size: 13px;
+      }
+      #debug h3 {
+        margin: 0;
+        font-size: 14px;
+      }
+      #debug input[type="number"] {
+        width: 90px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 4px 8px;
+      }
+      #debug .field {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        color: var(--text);
+        font-size: 13px;
+      }
+      #debug .btns {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      #debug details {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 6px 8px;
+        background: var(--bg);
+      }
+      #debug pre {
+        margin: 6px 0 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        max-height: 220px;
+        overflow: auto;
+        font-size: 12px;
+      }
+
+      @media (max-width: 860px) {
+        #debug {
+          position: fixed;
+          right: 0;
+          top: 0;
+          bottom: 0;
+          z-index: 20;
+          box-shadow: -8px 0 24px #0004;
+        }
+      }
+      @media (max-width: 760px) {
+        #sidebar {
+          position: fixed;
+          z-index: 10;
+          inset: 0 auto 0 0;
+          transform: translateX(-100%);
+          transition: transform 0.2s;
+        }
+        body.sidebar-open #sidebar {
+          transform: none;
+        }
+        #toggle-sidebar {
+          display: inline-block;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ======================= LOGIN ======================= -->
+    <main id="login-view" hidden>
+      <form id="auth-form" class="card" novalidate>
+        <h1>IA-1</h1>
+        <p class="muted" id="auth-subtitle">Sign in to continue</p>
+        <div class="tabs" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            data-tab="signin"
+            aria-selected="true"
+          >
+            Sign in
+          </button>
+          <button
+            type="button"
+            role="tab"
+            data-tab="signup"
+            aria-selected="false"
+          >
+            Create account
+          </button>
+        </div>
+        <label id="name-field" hidden
+          >Name <input name="name" autocomplete="name"
+        /></label>
+        <label
+          >Email <input name="email" type="email" autocomplete="email"
+        /></label>
+        <label
+          >Password
+          <input
+            name="password"
+            type="password"
+            autocomplete="current-password"
+        /></label>
+        <p id="auth-error" class="error" role="alert" hidden></p>
+        <button type="submit" id="auth-submit" class="primary">Sign in</button>
+        <button type="button" id="demo-login" class="ghost">
+          Use demo account
+        </button>
+        <p class="muted">Demo: demo@ia-1.test / demo1234</p>
+      </form>
+    </main>
+
+    <!-- ======================= APP ======================= -->
+    <div id="app-view" class="app" hidden>
+      <aside id="sidebar">
+        <div class="brand">IA-1</div>
+        <button
+          type="button"
+          id="new-chat"
+          data-testid="new-chat"
+          class="primary"
+        >
+          + New chat
+        </button>
+        <nav id="chat-list" aria-label="Chats"></nav>
+        <div class="user-box">
+          <span id="user-email"></span>
+          <button type="button" id="logout" class="ghost small">
+            Sign out
+          </button>
+        </div>
+      </aside>
+
+      <div class="main">
+        <header class="topbar">
+          <button
+            type="button"
+            id="toggle-sidebar"
+            class="ghost small"
+            aria-label="Toggle sidebar"
+          >
+            Menu
+          </button>
+          <strong>IA-1 Mock</strong>
+          <span class="spacer"></span>
+          <button type="button" id="debug-toggle" class="ghost small">
+            Debug
+          </button>
+        </header>
+
+        <section id="thread" aria-live="polite">
+          <div class="column">
+            <div id="empty" class="empty">
+              <h2>How can I help you today?</h2>
+              <p class="muted">
+                This mock answers by recombining your own words.
+              </p>
+            </div>
+            <div id="messages" class="column"></div>
+          </div>
+        </section>
+
+        <div id="banner" class="banner" role="alert" hidden>
+          <span id="banner-text"></span>
+          <button type="button" id="banner-retry" class="ghost small">
+            Retry
+          </button>
+        </div>
+
+        <footer class="composer">
+          <div class="box">
+            <textarea
+              id="prompt"
+              data-testid="prompt-input"
+              rows="1"
+              placeholder="Message IA-1"
+              aria-label="Message"
+            ></textarea>
+            <button
+              type="button"
+              id="stop"
+              data-testid="stop-generating"
+              class="ghost"
+              hidden
+            >
+              Stop
+            </button>
+            <button
+              type="button"
+              id="send"
+              data-testid="send"
+              class="primary"
+              disabled
+            >
+              Send
+            </button>
+          </div>
+          <p class="muted">Enter to send · Shift+Enter for a new line</p>
+        </footer>
+      </div>
+
+      <aside id="debug" hidden>
+        <h3>Mock controls</h3>
+        <label class="field"
+          >Thinking delay (ms)
+          <input id="set-thinking" type="number" min="0" step="100"
+        /></label>
+        <label class="field"
+          >Per-token delay (ms)
+          <input id="set-token" type="number" min="0" step="5"
+        /></label>
+        <label class="field"
+          >Fail the next reply <input id="set-fail" type="checkbox"
+        /></label>
+        <div class="btns">
+          <button type="button" id="expire-session" class="ghost small">
+            Expire session
+          </button>
+          <button type="button" id="clear-chats" class="ghost small">
+            Clear chats
+          </button>
+          <button type="button" id="reset-all" class="ghost small">
+            Reset everything
+          </button>
+        </div>
+        <h3>Last prompts received</h3>
+        <div id="prompt-log" data-testid="debug-prompts"></div>
+      </aside>
+    </div>
+
+    <script src="/mock-config.js"></script>
+    <script>
+      (() => {
+        "use strict";
+
+        /* ========================= Config & storage ========================= */
+        const DEFAULTS = {
+          thinkingMs: 900,
+          tokenMs: 45,
+          failNext: false,
+          ...(window.__MOCK_DEFAULTS__ || {}),
+        };
+        const DEMO = {
+          name: "Demo User",
+          email: "demo@ia-1.test",
+          password: "demo1234",
+        };
+        const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
+        const KEY = {
+          users: "ia1:users",
+          session: "ia1:session",
+          settings: "ia1:settings",
+          prompts: "ia1:prompts",
+          chats: (email) => `ia1:chats:${email}`,
+        };
+
+        const $ = (selector) => document.querySelector(selector);
+        const el = (tag, className, text) => {
+          const node = document.createElement(tag);
+          if (className) node.className = className;
+          if (text !== undefined) node.textContent = text;
+          return node;
+        };
+        const uid = () =>
+          Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+        const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+        const store = {
+          read(key, fallback) {
+            try {
+              const raw = localStorage.getItem(key);
+              return raw === null ? fallback : JSON.parse(raw);
+            } catch {
+              return fallback;
+            }
+          },
+          write(key, value) {
+            try {
+              localStorage.setItem(key, JSON.stringify(value));
+            } catch {
+              /* quota / disabled */
+            }
+          },
+          remove(key) {
+            try {
+              localStorage.removeItem(key);
+            } catch {
+              /* ignore */
+            }
+          },
+        };
+
+        const settings = {
+          get: () => ({ ...DEFAULTS, ...store.read(KEY.settings, {}) }),
+          patch: (patch) =>
+            store.write(KEY.settings, {
+              ...store.read(KEY.settings, {}),
+              ...patch,
+            }),
+        };
+
+        /* ========================= Fake auth ========================= */
+        // Mock only: a reversible "hash" is fine here, never do this for real.
+        const fakeHash = (text) =>
+          Array.from(new TextEncoder().encode(text), (b) =>
+            b.toString(16).padStart(2, "0"),
+          ).join("");
+
+        function ensureDemoUser() {
+          const users = store.read(KEY.users, {});
+          if (!users[DEMO.email]) {
+            users[DEMO.email] = {
+              name: DEMO.name,
+              passwordHash: fakeHash(DEMO.password),
+            };
+            store.write(KEY.users, users);
+          }
+        }
+
+        function currentSession() {
+          const found = store.read(KEY.session, null);
+          if (!found) return null;
+          if (found.expiresAt <= Date.now()) {
+            store.remove(KEY.session);
+            return null;
+          }
+          return found;
+        }
+
+        function startSession(email, name) {
+          store.write(KEY.session, {
+            email,
+            name,
+            token: uid() + uid(),
+            expiresAt: Date.now() + SESSION_TTL_MS,
+          });
+        }
+
+        let authMode = "signin";
+        function setAuthMode(next) {
+          authMode = next;
+          document
+            .querySelectorAll("[data-tab]")
+            .forEach((tab) =>
+              tab.setAttribute(
+                "aria-selected",
+                String(tab.dataset.tab === next),
+              ),
+            );
+          $("#name-field").hidden = next !== "signup";
+          $("#auth-submit").textContent =
+            next === "signup" ? "Create account" : "Sign in";
+          $("#auth-subtitle").textContent =
+            next === "signup"
+              ? "Create your IA-1 account"
+              : "Sign in to continue";
+          $("#auth-form [name=password]").autocomplete =
+            next === "signup" ? "new-password" : "current-password";
+          showAuthError("");
+        }
+
+        function showAuthError(message) {
+          const node = $("#auth-error");
+          node.textContent = message;
+          node.hidden = !message;
+        }
+
+        async function authenticate({ email, password, name }) {
+          const users = store.read(KEY.users, {});
+          await delay(500 + Math.random() * 500); // fake network latency
+
+          if (authMode === "signup") {
+            if (users[email])
+              return "An account with that email already exists.";
+            users[email] = {
+              name: name || email.split("@")[0],
+              passwordHash: fakeHash(password),
+            };
+            store.write(KEY.users, users);
+          } else {
+            const user = users[email];
+            if (!user) return "No account found for that email.";
+            if (user.passwordHash !== fakeHash(password))
+              return "Incorrect password.";
+          }
+          startSession(email, users[email].name);
+          return null;
+        }
+
+        async function submitAuth(credentials) {
+          const submit = $("#auth-submit");
+          const demo = $("#demo-login");
+          const label = submit.textContent;
+          showAuthError("");
+
+          const email = credentials.email.trim().toLowerCase();
+          if (!/^\S+@\S+\.\S+$/.test(email))
+            return showAuthError("Enter a valid email address.");
+          if (credentials.password.length < 6)
+            return showAuthError("Password must be at least 6 characters.");
+
+          submit.disabled = demo.disabled = true;
+          submit.textContent = "Please wait…";
+          const error = await authenticate({ ...credentials, email });
+          submit.disabled = demo.disabled = false;
+          submit.textContent = label;
+
+          if (error) return showAuthError(error);
+          location.replace("/");
+        }
+
+        /* ========================= Router ========================= */
+        function route() {
+          const session = currentSession();
+          const onLogin = location.pathname.replace(/\/+$/, "") === "/login";
+
+          if (!session && !onLogin) {
+            location.replace("/login");
+            return;
+          }
+          if (session && onLogin) {
+            location.replace("/");
+            return;
+          }
+
+          $("#login-view").hidden = !onLogin;
+          $("#app-view").hidden = onLogin;
+          document.title = onLogin ? "Sign in · IA-1" : "IA-1";
+          if (onLogin) {
+            ensureDemoUser();
+            setAuthMode("signin");
+          } else showApp(session);
+        }
+
+        /* ========================= Reply generator ========================= */
+        const LEXICON = {
+          es: {
+            preps: [
+              "de",
+              "en",
+              "con",
+              "por",
+              "para",
+              "sin",
+              "sobre",
+              "entre",
+              "hacia",
+              "desde",
+              "hasta",
+              "según",
+              "tras",
+              "ante",
+              "bajo",
+              "contra",
+            ],
+            conjs: [
+              "y",
+              "o",
+              "pero",
+              "aunque",
+              "porque",
+              "sino",
+              "pues",
+              "mientras",
+              "además",
+              "entonces",
+            ],
+            adversative: new Set(["pero", "aunque", "sino", "mientras"]),
+            hints: new Set([
+              "el",
+              "la",
+              "los",
+              "las",
+              "de",
+              "que",
+              "y",
+              "en",
+              "un",
+              "una",
+              "por",
+              "con",
+              "para",
+              "es",
+              "no",
+              "se",
+              "mi",
+              "me",
+              "hola",
+              "qué",
+              "cómo",
+              "puedes",
+              "quiero",
+              "genera",
+              "del",
+              "al",
+              "lo",
+              "su",
+              "más",
+              "pero",
+              "como",
+              "esto",
+              "esta",
+              "este",
+            ]),
+            fallback: "Necesito algunas palabras para poder responder.",
+          },
+          en: {
+            preps: [
+              "of",
+              "in",
+              "with",
+              "for",
+              "without",
+              "about",
+              "between",
+              "toward",
+              "from",
+              "until",
+              "through",
+              "after",
+              "before",
+              "under",
+              "against",
+              "over",
+            ],
+            conjs: [
+              "and",
+              "or",
+              "but",
+              "although",
+              "because",
+              "so",
+              "while",
+              "yet",
+              "besides",
+              "whereas",
+            ],
+            adversative: new Set([
+              "but",
+              "although",
+              "while",
+              "yet",
+              "whereas",
+            ]),
+            hints: new Set([
+              "the",
+              "a",
+              "an",
+              "of",
+              "and",
+              "to",
+              "in",
+              "is",
+              "it",
+              "you",
+              "for",
+              "with",
+              "my",
+              "me",
+              "hi",
+              "hello",
+              "what",
+              "how",
+              "can",
+              "generate",
+              "this",
+              "that",
+              "are",
+              "on",
+              "be",
+              "please",
+            ]),
+            fallback: "I need a few words to be able to answer.",
+          },
+        };
+
+        function hashString(text) {
+          let h = 2166136261 >>> 0;
+          for (let i = 0; i < text.length; i++) {
+            h ^= text.charCodeAt(i);
+            h = Math.imul(h, 16777619) >>> 0;
+          }
+          return h;
+        }
+
+        function mulberry32(seed) {
+          let a = seed >>> 0;
+          return () => {
+            a = (a + 0x6d2b79f5) | 0;
+            let t = Math.imul(a ^ (a >>> 15), 1 | a);
+            t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+          };
+        }
+
+        /** The conversation-continuation prompt of pai wraps the real question in XML: answer only that. */
+        function extractUserText(prompt) {
+          for (const tag of ["current_user_message", "user_message"]) {
+            const match = new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`).exec(
+              prompt,
+            );
+            if (match) return match[1].replace(/<!\[CDATA\[|\]\]>/g, "").trim();
+          }
+          return prompt;
+        }
+
+        const extractWords = (text) =>
+          (text.normalize("NFC").match(/\p{L}[\p{L}\p{M}'’-]*/gu) ?? []).map(
+            (w) => w.replace(/['’-]+$/, "").toLowerCase(),
+          );
+
+        function detectLanguage(text) {
+          const words = extractWords(text);
+          const es = words.filter((w) => LEXICON.es.hints.has(w)).length;
+          const en = words.filter((w) => LEXICON.en.hints.has(w)).length;
+          if (es !== en) return es > en ? "es" : "en";
+          return /[áéíóúñ¿¡]/i.test(text) ? "es" : "en";
+        }
+
+        function shuffle(list, rand) {
+          const copy = [...list];
+          for (let i = copy.length - 1; i > 0; i--) {
+            const j = Math.floor(rand() * (i + 1));
+            [copy[i], copy[j]] = [copy[j], copy[i]];
+          }
+          return copy;
+        }
+
+        const capitalize = (text) =>
+          text.charAt(0).toLocaleUpperCase() + text.slice(1);
+
+        /** Deterministic for a given prompt: only words of the prompt, glued with prepositions/conjunctions. */
+        function generateReply(prompt) {
+          const source = extractUserText(prompt);
+          const lex = LEXICON[detectLanguage(source)];
+          const connectors = new Set([...lex.preps, ...lex.conjs]);
+          const rand = mulberry32(hashString(source));
+
+          const words = extractWords(source).filter(
+            (w) => w.length >= 3 && !connectors.has(w),
+          );
+          if (words.length === 0) return lex.fallback;
+
+          const unique = [...new Set(words)];
+          const total = Math.min(60, Math.max(12, words.length + 6));
+          let queue = [];
+          let last = "";
+          const nextWord = () => {
+            if (queue.length === 0) queue = shuffle(unique, rand);
+            let word = queue.shift();
+            if (word === last && unique.length > 1) {
+              queue.push(word);
+              word = queue.shift();
+            }
+            last = word;
+            return word;
+          };
+          const pick = (list) => list[Math.floor(rand() * list.length)];
+
+          const buildSentence = (length) => {
+            const parts = [];
+            for (let i = 0; i < length; i++) {
+              parts.push(nextWord());
+              if (i < length - 1 && rand() < 0.65) {
+                const connector = pick(rand() < 0.4 ? lex.conjs : lex.preps);
+                if (lex.adversative.has(connector))
+                  parts[parts.length - 1] += ",";
+                parts.push(connector);
+              }
+            }
+            return `${capitalize(parts.join(" "))}.`;
+          };
+
+          const sentences = [];
+          for (let remaining = total; remaining > 0; ) {
+            let length = 5 + Math.floor(rand() * 6);
+            if (remaining - length < 3) length = remaining;
+            length = Math.min(length, remaining);
+            sentences.push(buildSentence(length));
+            remaining -= length;
+          }
+
+          const paragraphs = [];
+          for (let i = 0; i < sentences.length; i += 2)
+            paragraphs.push(sentences.slice(i, i + 2).join(" "));
+          return paragraphs
+            .slice(0, 3)
+            .concat(
+              paragraphs.slice(3).length ? [paragraphs.slice(3).join(" ")] : [],
+            )
+            .join("\n\n");
+        }
+
+        function titleFrom(prompt) {
+          const words = extractWords(extractUserText(prompt)).slice(0, 6);
+          return words.length
+            ? capitalize(words.join(" ")).slice(0, 40)
+            : "New chat";
+        }
+
+        /* ========================= Chat state ========================= */
+        let session = null;
+        let state = { activeId: null, chats: [] };
+        let run = null; // { aborted, wake } while a reply is being generated
+        let appBound = false;
+
+        const activeChat = () =>
+          state.chats.find((chat) => chat.id === state.activeId) ?? null;
+        const saveState = () => store.write(KEY.chats(session.email), state);
+
+        function ensureChat() {
+          let chat = activeChat();
+          if (!chat) {
+            chat = {
+              id: uid(),
+              title: "New chat",
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              messages: [],
+            };
+            state.chats.unshift(chat);
+            state.activeId = chat.id;
+          }
+          return chat;
+        }
+
+        function newChat() {
+          stop();
+          const current = activeChat();
+          if (!current || current.messages.length > 0) {
+            state.chats.unshift({
+              id: uid(),
+              title: "New chat",
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              messages: [],
+            });
+            state.activeId = state.chats[0].id;
+            saveState();
+          }
+          hideBanner();
+          renderAll();
+          $("#prompt").focus();
+        }
+
+        function selectChat(id) {
+          stop();
+          state.activeId = id;
+          saveState();
+          hideBanner();
+          renderAll();
+          document.body.classList.remove("sidebar-open");
+        }
+
+        function deleteChat(id) {
+          stop();
+          state.chats = state.chats.filter((chat) => chat.id !== id);
+          if (state.activeId === id)
+            state.activeId = state.chats[0]?.id ?? null;
+          saveState();
+          renderAll();
+        }
+
+        /* ========================= Rendering ========================= */
+        function scrollDown() {
+          const thread = $("#thread");
+          thread.scrollTop = thread.scrollHeight;
+        }
+
+        /** The data-role div holds ONLY the message text: avatar and actions live outside it. */
+        function messageRow(
+          message,
+          { actions = false, pending = false } = {},
+        ) {
+          const row = el("div", `row ${message.role}`);
+          const body = el("div", "msg");
+          body.dataset.role = message.role;
+          body.dataset.id = message.id;
+
+          if (message.role === "assistant") {
+            row.append(el("div", "avatar", "IA"));
+            const stack = el("div", "stack");
+            if (pending) {
+              body.classList.add("thinking");
+              body.append(
+                el("span", "dot"),
+                el("span", "dot"),
+                el("span", "dot"),
+              );
+            } else {
+              body.textContent = message.content;
+            }
+            stack.append(body);
+            if (actions) {
+              const bar = el("div", "actions");
+              const copy = el("button", "", "Copy");
+              copy.type = "button";
+              copy.addEventListener("click", async () => {
+                try {
+                  await navigator.clipboard.writeText(message.content);
+                  copy.textContent = "Copied";
+                } catch {
+                  copy.textContent = "Press Ctrl+C";
+                }
+                setTimeout(() => {
+                  copy.textContent = "Copy";
+                }, 1200);
+              });
+              const again = el("button", "", "Regenerate");
+              again.type = "button";
+              again.addEventListener("click", regenerate);
+              bar.append(copy, again);
+              stack.append(bar);
+            }
+            row.append(stack);
+          } else {
+            body.textContent = message.content;
+            row.append(body);
+          }
+          return { row, body };
+        }
+
+        function renderMessages() {
+          const chat = activeChat();
+          const list = $("#messages");
+          list.replaceChildren();
+          $("#empty").hidden = Boolean(chat && chat.messages.length);
+          if (!chat) return;
+
+          const lastIndex = chat.messages.length - 1;
+          chat.messages.forEach((message, index) => {
+            const isLastAssistant =
+              message.role === "assistant" && index === lastIndex;
+            list.append(
+              messageRow(message, { actions: isLastAssistant && !run }).row,
+            );
+          });
+          scrollDown();
+        }
+
+        function renderChatList() {
+          const nav = $("#chat-list");
+          nav.replaceChildren();
+          [...state.chats]
+            .filter((chat) => chat.messages.length > 0)
+            .sort((a, b) => b.updatedAt - a.updatedAt)
+            .forEach((chat) => {
+              const item = el(
+                "div",
+                `chat-item${chat.id === state.activeId ? " active" : ""}`,
+              );
+              const open = el("button", "open", chat.title);
+              open.type = "button";
+              open.addEventListener("click", () => selectChat(chat.id));
+              const del = el("button", "del", "✕");
+              del.type = "button";
+              del.title = "Delete chat";
+              del.addEventListener("click", () => deleteChat(chat.id));
+              item.append(open, del);
+              nav.append(item);
+            });
+        }
+
+        function renderAll() {
+          renderChatList();
+          renderMessages();
+          updateSendState();
+        }
+
+        function updateSendState() {
+          $("#send").disabled = !$("#prompt").value.trim() || Boolean(run);
+        }
+
+        function autosize() {
+          const textarea = $("#prompt");
+          textarea.style.height = "auto";
+          textarea.style.height = `${Math.min(textarea.scrollHeight, 220)}px`;
+        }
+
+        function setBusy(busy) {
+          $("#stop").hidden = !busy;
+          updateSendState();
+        }
+
+        function showBanner(message, onRetry) {
+          $("#banner-text").textContent = message;
+          const retry = $("#banner-retry");
+          retry.onclick = () => {
+            hideBanner();
+            onRetry?.();
+          };
+          retry.hidden = !onRetry;
+          $("#banner").hidden = false;
+        }
+        function hideBanner() {
+          $("#banner").hidden = true;
+        }
+
+        /* ========================= Generation ========================= */
+        function sleep(ms, token) {
+          return new Promise((resolve) => {
+            if (token.aborted) {
+              resolve();
+              return;
+            }
+            const timer = setTimeout(() => {
+              token.wake = null;
+              resolve();
+            }, ms);
+            token.wake = () => {
+              clearTimeout(timer);
+              token.wake = null;
+              resolve();
+            };
+          });
+        }
+        const jitter = (ms) => Math.round(ms * (0.6 + Math.random() * 0.8));
+
+        function stop() {
+          if (!run) return;
+          run.aborted = true;
+          run.wake?.();
+        }
+
+        function logPrompt(chatId, text) {
+          const prompts = store.read(KEY.prompts, []);
+          prompts.unshift({ at: Date.now(), chatId, text });
+          store.write(KEY.prompts, prompts.slice(0, 10));
+          renderPromptLog();
+        }
+
+        async function send(text) {
+          const chat = ensureChat();
+          chat.messages.push({ id: uid(), role: "user", content: text });
+          if (chat.title === "New chat") chat.title = titleFrom(text);
+          chat.updatedAt = Date.now();
+          saveState();
+          renderAll();
+          await respond(chat);
+        }
+
+        async function respond(chat) {
+          const prompt =
+            [...chat.messages].reverse().find((m) => m.role === "user")
+              ?.content ?? "";
+          const config = settings.get();
+          const token = { aborted: false, wake: null };
+          run = token;
+          setBusy(true);
+          logPrompt(chat.id, prompt);
+
+          const assistant = { id: uid(), role: "assistant", content: "" };
+          const { row, body } = messageRow(assistant, { pending: true });
+          $("#messages").append(row);
+          $("#empty").hidden = true;
+          scrollDown();
+
+          const finish = () => {
+            run = null;
+            setBusy(false);
+            renderAll();
+          };
+
+          await sleep(jitter(config.thinkingMs), token);
+
+          if (!token.aborted && config.failNext) {
+            settings.patch({ failNext: false });
+            $("#set-fail").checked = false;
+            row.remove();
+            showBanner(
+              "Something went wrong while generating a response.",
+              () => respond(chat),
+            );
+            finish();
+            return;
+          }
+
+          const tokens = token.aborted
+            ? []
+            : (generateReply(prompt).match(/\S+\s*/g) ?? []);
+          let index = 0;
+          while (index < tokens.length && !token.aborted) {
+            const take = 1 + Math.floor(Math.random() * 3);
+            assistant.content += tokens.slice(index, index + take).join("");
+            index += take;
+            body.classList.remove("thinking");
+            body.textContent = assistant.content;
+            scrollDown();
+            await sleep(jitter(config.tokenMs), token);
+          }
+
+          if (assistant.content.trim() !== "") {
+            chat.messages.push(assistant);
+            chat.updatedAt = Date.now();
+            saveState();
+          }
+          finish();
+        }
+
+        function regenerate() {
+          const chat = activeChat();
+          if (!chat || run) return;
+          if (chat.messages.at(-1)?.role === "assistant") chat.messages.pop();
+          saveState();
+          renderAll();
+          respond(chat);
+        }
+
+        function submitComposer() {
+          const textarea = $("#prompt");
+          const text = textarea.value.trim();
+          if (!text || run) return;
+          if (!currentSession()) {
+            route();
+            return;
+          } // session expired
+          textarea.value = "";
+          autosize();
+          hideBanner();
+          send(text);
+        }
+
+        /* ========================= Debug panel ========================= */
+        function renderPromptLog() {
+          const container = $("#prompt-log");
+          container.replaceChildren();
+          const prompts = store.read(KEY.prompts, []);
+          if (!prompts.length) {
+            container.append(el("p", "muted", "Nothing received yet."));
+            return;
+          }
+          for (const entry of prompts) {
+            const details = el("details");
+            details.append(
+              el(
+                "summary",
+                "",
+                `${new Date(entry.at).toLocaleTimeString()} · ${entry.text.length} chars`,
+              ),
+            );
+            details.append(el("pre", "", entry.text));
+            container.append(details);
+          }
+        }
+
+        function renderSettings() {
+          const current = settings.get();
+          $("#set-thinking").value = current.thinkingMs;
+          $("#set-token").value = current.tokenMs;
+          $("#set-fail").checked = Boolean(current.failNext);
+        }
+
+        function resetEverything() {
+          for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith("ia1:")) localStorage.removeItem(key);
+          }
+          location.replace("/login");
+        }
+
+        /* ========================= App bootstrap ========================= */
+        function showApp(activeSession) {
+          session = activeSession;
+          state = store.read(KEY.chats(session.email), {
+            activeId: null,
+            chats: [],
+          });
+          $("#user-email").textContent = session.email;
+          $("#user-email").title = session.email;
+
+          if (!appBound) {
+            appBound = true;
+            const textarea = $("#prompt");
+
+            textarea.addEventListener("input", () => {
+              autosize();
+              updateSendState();
+            });
+            textarea.addEventListener("keydown", (event) => {
+              if (
+                event.key === "Enter" &&
+                !event.shiftKey &&
+                !event.isComposing
+              ) {
+                event.preventDefault();
+                submitComposer();
+              }
+            });
+            $("#send").addEventListener("click", submitComposer);
+            $("#stop").addEventListener("click", stop);
+            $("#new-chat").addEventListener("click", newChat);
+            $("#logout").addEventListener("click", () => {
+              stop();
+              store.remove(KEY.session);
+              location.replace("/login");
+            });
+            $("#toggle-sidebar").addEventListener("click", () =>
+              document.body.classList.toggle("sidebar-open"),
+            );
+            $("#debug-toggle").addEventListener("click", () => {
+              $("#debug").hidden = !$("#debug").hidden;
+            });
+
+            $("#set-thinking").addEventListener("change", (e) =>
+              settings.patch({
+                thinkingMs: Math.max(0, Number(e.target.value) || 0),
+              }),
+            );
+            $("#set-token").addEventListener("change", (e) =>
+              settings.patch({
+                tokenMs: Math.max(0, Number(e.target.value) || 0),
+              }),
+            );
+            $("#set-fail").addEventListener("change", (e) =>
+              settings.patch({ failNext: e.target.checked }),
+            );
+            $("#expire-session").addEventListener("click", () => {
+              const current = store.read(KEY.session, null);
+              if (current)
+                store.write(KEY.session, {
+                  ...current,
+                  expiresAt: Date.now() - 1,
+                });
+            });
+            $("#clear-chats").addEventListener("click", () => {
+              stop();
+              state = { activeId: null, chats: [] };
+              saveState();
+              renderAll();
+            });
+            $("#reset-all").addEventListener("click", resetEverything);
+          }
+
+          renderSettings();
+          renderPromptLog();
+          renderAll();
+          $("#prompt").focus();
+        }
+
+        /* ========================= Login wiring ========================= */
+        document
+          .querySelectorAll("[data-tab]")
+          .forEach((tab) =>
+            tab.addEventListener("click", () => setAuthMode(tab.dataset.tab)),
+          );
+        $("#auth-form").addEventListener("submit", (event) => {
+          event.preventDefault();
+          const data = new FormData(event.currentTarget);
+          submitAuth({
+            name: String(data.get("name") ?? "").trim(),
+            email: String(data.get("email") ?? ""),
+            password: String(data.get("password") ?? ""),
+          });
+        });
+        $("#demo-login").addEventListener("click", () => {
+          ensureDemoUser();
+          setAuthMode("signin");
+          $("#auth-form [name=email]").value = DEMO.email;
+          $("#auth-form [name=password]").value = DEMO.password;
+          submitAuth({ name: "", email: DEMO.email, password: DEMO.password });
+        });
+
+        /* ========================= Boot ========================= */
+        window.addEventListener("storage", (event) => {
+          if (event.key === KEY.session) route();
+        });
+        window.addEventListener("pageshow", (event) => {
+          if (event.persisted) route();
+        });
+        window.__ia1 = {
+          prompts: () => store.read(KEY.prompts, []),
+          settings: () => settings.get(),
+          reset: resetEverything,
+        };
+        route();
+      })();
+    </script>
+  </body>
+</html>
