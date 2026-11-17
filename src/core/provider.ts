@@ -54,15 +54,10 @@ export interface Provider {
 }
 
 export interface ProviderDefinition {
-  /** Must match the folder name, e.g. "ia-1". */
+  /** Must match the folder name, e.g. "deepseek". */
   readonly id: string;
   readonly displayName: string;
   readonly loginUrl: string;
-  /**
-   * stateless: every request opens a new chat (history is replayed when present).
-   * resumable: provider chat ids are cached and reused, with automatic fallback to a replay.
-   */
-  readonly sessionStrategy: "stateless" | "resumable";
   readonly createPage: (page: Page, env: PageEnv) => ChatPage;
   /**
    * Closed list of variants. When set, unknown variants are rejected with a 400 before any browser

@@ -1,8 +1,9 @@
 /**
- * Model ids exposed by pai: `<provider>[/<variant>][@<account>]`
- *   ia-2            -> provider ia-2, any account
- *   ia-2@work       -> provider ia-2, pinned to the "work" account
- *   ia-2/pro@work   -> provider variant "pro" (provider-specific), pinned account
+ * Model ids exposed by pai: `<model>[/<variant>][@<account>]`, where `<model>` is the provider id
+ * (its folder name in src/providers):
+ *   deepseek                   -> provider deepseek, any account
+ *   deepseek@work              -> pinned to the "work" account
+ *   deepseek/think-search@work -> provider-specific variant "think-search", pinned account
  */
 export interface ModelRef {
   readonly provider: string;

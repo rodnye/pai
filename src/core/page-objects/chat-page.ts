@@ -22,7 +22,7 @@ export interface ChatPage {
   resolveSessionId(): Promise<string | undefined>;
   /** Text of the newest assistant bubble currently on screen, used to validate a resumed chat. */
   readLastAssistantMessage(): Promise<string | undefined>;
-  /** Optional provider-specific model picker (`ia-2/<variant>`). */
+  /** Optional provider-specific model picker (`deepseek/<variant>`). */
   selectModel(variant: string): Promise<void>;
   /** Types the prompt, presses Enter and resolves with the final answer text. */
   sendMessage(text: string): Promise<string>;

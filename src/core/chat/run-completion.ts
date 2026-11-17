@@ -66,11 +66,10 @@ export async function runCompletion(
 
   const turns = normalizeMessages(request.messages);
   const conversation = splitConversation(turns);
-  const resumable = definition.sessionStrategy === "resumable";
 
   // A cached chat only helps if it lives in an account we are allowed to use.
   const hit =
-    resumable && conversation.history.length > 0
+    conversation.history.length > 0
       ? await sessions.find(
           definition.id,
           fingerprintConversation(conversation),
@@ -97,31 +96,28 @@ export async function runCompletion(
           cached,
           variant: options.variant,
           limits: { maxHistoryChars: config.maxHistoryChars },
-          resumable,
           log,
         }),
       definition.browser,
     );
 
-    if (resumable) {
-      if (result.sessionId) {
-        await sessions.advance(cached, {
-          providerId: definition.id,
-          accountId: account,
-          sessionId: result.sessionId,
-          fingerprint: fingerprintConversation({
-            system: conversation.system,
-            history: [
-              ...conversation.history,
-              conversation.current,
-              { role: "assistant", content: result.reply },
-            ],
-          }),
-          updatedAt: Date.now(),
-        });
-      } else if (cached) {
-        await sessions.forget(cached);
-      }
+    if (result.sessionId) {
+      await sessions.advance(cached, {
+        providerId: definition.id,
+        accountId: account,
+        sessionId: result.sessionId,
+        fingerprint: fingerprintConversation({
+          system: conversation.system,
+          history: [
+            ...conversation.history,
+            conversation.current,
+            { role: "assistant", content: result.reply },
+          ],
+        }),
+        updatedAt: Date.now(),
+      });
+    } else if (cached) {
+      await sessions.forget(cached);
     }
 
     options.onMeta?.({
@@ -167,10 +163,9 @@ async function executeTurn(input: {
   cached: SessionRecord | undefined;
   variant: string | undefined;
   limits: PromptLimits;
-  resumable: boolean;
   log: Logger;
 }): Promise<TurnResult> {
-  const { chat, conversation, cached, variant, limits, resumable, log } = input;
+  const { chat, conversation, cached, variant, limits, log } = input;
 
   // 1) Fast path: continue the chat that already holds this exact history.
   if (cached) {
@@ -211,7 +206,7 @@ async function executeTurn(input: {
   return {
     reply,
     mode: hasHistory ? "restored" : "fresh",
-    sessionId: resumable ? await chat.resolveSessionId() : undefined,
+    sessionId: await chat.resolveSessionId(),
   };
 }
 
