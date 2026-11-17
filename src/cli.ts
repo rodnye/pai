@@ -22,6 +22,7 @@ Usage:
 Examples:
   pnpm auth ia-1
   pnpm auth ia-2 --account work
+  pnpm auth deepseek
 `;
 
 async function serve(): Promise<void> {
@@ -89,6 +90,7 @@ async function auth(
           "Sign in / configure the account in the browser, then press ENTER here to save... ",
         );
       },
+      provider.browser,
     );
     console.log("Profile saved (cookies, localStorage, IndexedDB).");
     console.log(
@@ -104,8 +106,11 @@ async function list(): Promise<void> {
   const registry = await discoverProviders(logger);
   for (const provider of registry.list()) {
     const accounts = await profiles.listAccounts(provider.id);
+    const variants = provider.variants.length
+      ? `  variants: ${provider.variants.join(", ")}`
+      : "";
     console.log(
-      `${provider.id}  ${provider.displayName}  accounts: ${accounts.join(", ")}`,
+      `${provider.id}  ${provider.displayName}  accounts: ${accounts.join(", ")}${variants}`,
     );
   }
 }
