@@ -13,6 +13,7 @@ import {
 } from "../conversation/prompt-builder.js";
 import type { SessionRecord } from "../conversation/session-store.js";
 import {
+  BadRequestError,
   PaiError,
   ProviderAutomationError,
   ProviderTimeoutError,
@@ -50,6 +51,19 @@ export async function runCompletion(
   const { config, logger, profiles, sessions } = runtime;
   const log = logger.child(definition.id);
 
+  if (
+    options.variant !== undefined &&
+    definition.variants !== undefined &&
+    !definition.variants.includes(options.variant)
+  ) {
+    throw new BadRequestError(
+      `Unknown variant '${options.variant}' for '${definition.id}'. ` +
+        `Available: ${definition.variants.join(", ") || "none"}.`,
+      "model_not_found",
+    );
+  }
+  const pageEnv = definition.pageEnv?.(config) ?? config;
+
   const turns = normalizeMessages(request.messages);
   const conversation = splitConversation(turns);
   const resumable = definition.sessionStrategy === "resumable";
@@ -73,16 +87,20 @@ export async function runCompletion(
   });
 
   try {
-    const result = await profiles.withPage(definition.id, account, (page) =>
-      executeTurn({
-        chat: definition.createPage(page, config),
-        conversation,
-        cached,
-        variant: options.variant,
-        limits: { maxHistoryChars: config.maxHistoryChars },
-        resumable,
-        log,
-      }),
+    const result = await profiles.withPage(
+      definition.id,
+      account,
+      (page) =>
+        executeTurn({
+          chat: definition.createPage(page, pageEnv),
+          conversation,
+          cached,
+          variant: options.variant,
+          limits: { maxHistoryChars: config.maxHistoryChars },
+          resumable,
+          log,
+        }),
+      definition.browser,
     );
 
     if (resumable) {

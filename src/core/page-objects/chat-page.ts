@@ -2,7 +2,14 @@ import type { Config } from "../config.js";
 
 export type PageEnv = Pick<
   Config,
-  "responseTimeoutMs" | "navigationTimeoutMs" | "stableMs" | "pollMs"
+  | "responseTimeoutMs"
+  | "navigationTimeoutMs"
+  | "stableMs"
+  | "pollMs"
+  | "typeDelay"
+  | "sendDelay"
+  | "typeMaxChars"
+  | "keyDelay"
 >;
 
 /** What the conversation runner needs from any provider's page object. */

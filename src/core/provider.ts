@@ -36,11 +36,20 @@ export type CreateChatCompletion = (
   options?: CompletionOptions,
 ) => Promise<ChatCompletionResponse>;
 
+/** Per-provider browser context settings (applied to every profile of the provider). */
+export interface BrowserOptions {
+  /** navigator.language / Accept-Language, e.g. "en-US". Useful when selectors rely on UI text. */
+  readonly locale?: string;
+}
+
 export interface Provider {
   readonly id: string;
   readonly displayName: string;
   /** Page opened by `pnpm auth <id>` so the user can sign in / configure the account. */
   readonly loginUrl: string;
+  /** Known model variants (`<id>/<variant>`). Empty = free-form, handled by `ChatPage.selectModel`. */
+  readonly variants: readonly string[];
+  readonly browser: BrowserOptions;
   readonly createChatCompletion: CreateChatCompletion;
 }
 
@@ -55,6 +64,14 @@ export interface ProviderDefinition {
    */
   readonly sessionStrategy: "stateless" | "resumable";
   readonly createPage: (page: Page, env: PageEnv) => ChatPage;
+  /**
+   * Closed list of variants. When set, unknown variants are rejected with a 400 before any browser
+   * is launched, and they are listed by `GET /v1/models`.
+   */
+  readonly variants?: readonly string[];
+  readonly browser?: BrowserOptions;
+  /** Adjusts the global page timings for this provider (evaluated per request, after `.env` loads). */
+  readonly pageEnv?: (base: PageEnv) => PageEnv;
 }
 
 export function defineProvider(definition: ProviderDefinition): Provider {
@@ -62,6 +79,8 @@ export function defineProvider(definition: ProviderDefinition): Provider {
     id: definition.id,
     displayName: definition.displayName,
     loginUrl: definition.loginUrl,
+    variants: definition.variants ?? [],
+    browser: definition.browser ?? {},
     createChatCompletion: (request, options = {}) =>
       runCompletion(definition, getRuntime(), request, options),
   };

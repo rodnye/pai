@@ -1,6 +1,7 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import type { Locator, Page } from "playwright";
-import { ProviderTimeoutError } from "../errors.js";
+import { PaiError, ProviderTimeoutError } from "../errors.js";
+import { humanPause, splitForTyping } from "../utils/human-delay.js";
 import type { ChatPage, PageEnv } from "./chat-page.js";
 
 export interface ChatSelectors {
@@ -12,6 +13,8 @@ export interface ChatSelectors {
   readonly newChatButton?: string;
   /** Visible while the model is still generating (e.g. a "Stop" button). */
   readonly busyIndicator?: string;
+  /** Send button. Optional: when absent the prompt is submitted by pressing Enter. */
+  readonly sendButton?: string;
 }
 
 /**
@@ -63,10 +66,7 @@ export abstract class BaseChatPage implements ChatPage {
         .click({ timeout: 3_000 })
         .catch(() => undefined);
     }
-    await this.input.waitFor({
-      state: "visible",
-      timeout: this.env.navigationTimeoutMs,
-    });
+    await this.waitUntilReady();
   }
 
   async openSession(sessionId: string): Promise<boolean> {
@@ -78,13 +78,12 @@ export abstract class BaseChatPage implements ChatPage {
         waitUntil: "domcontentloaded",
       });
       if (response && !response.ok()) return false;
-      await this.input.waitFor({
-        state: "visible",
-        timeout: this.env.navigationTimeoutMs,
-      });
+      await this.waitUntilReady();
       // Sites usually redirect unknown/deleted chats to the home page or to a new chat.
       return this.parseSessionId(this.page.url()) === sessionId;
-    } catch {
+    } catch (error) {
+      // Login walls / bot challenges are not "chat gone": surface them instead of replaying.
+      if (error instanceof PaiError) throw error;
       return false;
     }
   }
@@ -126,10 +125,54 @@ export abstract class BaseChatPage implements ChatPage {
 
   async sendMessage(text: string): Promise<string> {
     const previousCount = await this.assistantMessages.count();
-    const input = this.input;
-    await input.fill(text); // fill() keeps newlines and dispatches the input events frameworks listen to
-    await input.press("Enter");
+    await humanPause(this.env.typeDelay);
+    await this.typePrompt(text);
+    await humanPause(this.env.sendDelay);
+    await this.submit();
     return this.collectResponse(previousCount);
+  }
+
+  // ---- Hooks -----------------------------------------------------------------------------------
+
+  /**
+   * Resolves once the chat UI is usable after a navigation. Override to detect login walls,
+   * bot challenges, etc. and throw a descriptive `PaiError` instead of a plain timeout.
+   */
+  protected async waitUntilReady(): Promise<void> {
+    await this.input.waitFor({
+      state: "visible",
+      timeout: this.env.navigationTimeoutMs,
+    });
+  }
+
+  /**
+   * Types the start of the prompt key by key (up to `typeMaxChars`) and inserts the rest at once,
+   * so short prompts look fully typed and long ones do not take minutes.
+   */
+  protected async typePrompt(text: string): Promise<void> {
+    const input = this.input;
+    await input.fill(""); // clears leftovers (drafts) and focuses the textarea
+    await input.click();
+
+    const { typed, rest } = splitForTyping(text, this.env.typeMaxChars);
+    const keyboard = this.page.keyboard;
+    for (const char of typed) {
+      // Enter would submit the prompt: insert newlines as text instead of pressing the key.
+      if (char === "\n") await keyboard.insertText(char);
+      else await keyboard.type(char);
+      await humanPause(this.env.keyDelay);
+    }
+    if (rest) await keyboard.insertText(rest);
+
+    // Some UIs alter keystrokes (auto-closing brackets, autocomplete...): never send a wrong prompt.
+    if ((await input.inputValue()) !== text) await input.fill(text);
+  }
+
+  /** Submits the prompt already typed in the input: clicks `sendButton` if declared, else Enter. */
+  protected async submit(): Promise<void> {
+    const { sendButton } = this.selectors;
+    if (sendButton) await this.page.locator(sendButton).last().click();
+    else await this.input.press("Enter");
   }
 
   // ---- Response capture ------------------------------------------------------------------------
