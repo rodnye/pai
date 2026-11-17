@@ -1,14 +1,24 @@
-# pai
-
-> _Portal-to-A.I_ , y a continuación, un pay:
-
 <div align="center">
-  <img src="./docs/pay.png" width="300"/>
-</div>
+
+<h1>pai</h1>
+
+<b>P</b>ortal-to-<b>A</b>.<b>I</b>
+<br/>
+<sub><i>...y a continuación, un pay:</i></sub>
+
+<br/><br/>
+
+<img src="./docs/pay.png" width="160" alt="un pay"/>
+
+<br/><br/>
 
 Servidor local que maneja chats web de IA con Playwright.
+<br/>
+<sub>Por el momento solo soporta <a href="https://chat.deepseek.ai">chat.deepseek.ai</a></sub>
 
-Por el momento solo soporta https://chat.deepseek.ai
+</div>
+
+---
 
 ## Requisitos e instalación
 
@@ -33,12 +43,11 @@ curl http://127.0.0.1:3000/v1/chat/completions \
   -d '{"model":"deepseek/think","messages":[{"role":"user","content":"oh hi, generate a powerful cat"}]}'
 ```
 
-Con el SDK de OpenAI: `new OpenAI({ baseURL: "http://127.0.0.1:3000/v1", apiKey: "pai" })`.
+Con el SDK de OpenAI: 
 
-**Ids de modelo:** `modelo[/variante][@cuenta]`. `modelo` es el id del proveedor (el nombre de su
-carpeta en `src/providers/`): `deepseek` (cuenta automática), `deepseek@work` (cuenta fija),
-`deepseek/think-search@work` (variante propia del proveedor, vía `ChatPage.selectModel`).
-`GET /v1/models` los lista.
+```ts
+const ai = new OpenAI({ baseURL: "http://127.0.0.1:3000/v1", apiKey: "pai" })
+```
 
 ## DeepSeek
 
@@ -48,7 +57,6 @@ pnpm auth deepseek            # inicia sesión (y resuelve Cloudflare si aparece
 
 | Modelo                  | DeepThink              | Search                 |
 | ----------------------- | ---------------------- | ---------------------- |
-| `deepseek`              | lo que tenga la cuenta | lo que tenga la cuenta |
 | `deepseek/chat`         | off                    | off                    |
 | `deepseek/think`        | on                     | off                    |
 | `deepseek/search`       | off                    | on                     |
@@ -57,24 +65,9 @@ pnpm auth deepseek            # inicia sesión (y resuelve Cloudflare si aparece
 - El navegador se abre con locale `en-US`: los selectores usan textos en inglés ("Message DeepSeek",
   "New chat", "Read aloud"). Si la cuenta tiene otro idioma configurado, cámbialo a inglés.
 - Solo se devuelve la respuesta final (`.ds-assistant-message-main-content`); el razonamiento se descarta.
-- Timeout propio: `PAI_DEEPSEEK_RESPONSE_TIMEOUT_MS` (por defecto ≥ 5 min).
 - Si Cloudflare bloquea en headless, prueba `PAI_HEADLESS=false` o `PAI_BROWSER_CHANNEL=chrome`.
-- Selectores basados en `INFORME_PLAYWRIGHT_DEEPSEEK.md`; los puntos marcados como [inferido] allí
-  (estado de los toggles, "Read aloud" como señal de fin) deben validarse en vivo.
 
-## Cómo se reanuda una sesión
-
-1. Se calcula la huella del historial previo (todo menos el último mensaje del usuario) y se busca en
-   `.pai/sessions.json` → `{ provider, account, sessionId }`.
-2. Si hay coincidencia se abre `/chat/<sessionId>` **con la misma cuenta** y se verifica que el último
-   mensaje del asistente en pantalla sea el esperado. Si todo cuadra, solo se envía el último mensaje.
-3. Si no hay coincidencia, la URL falla (chat borrado/redirigido) o el contenido difiere (chat editado
-   fuera de pai), se pulsa **New chat** y se envía un _prompt de continuación_ en XML con el historial
-   (truncado por `PAI_MAX_HISTORY_CHARS`) pidiendo una respuesta limpia, sin prefijos de rol.
-4. Tras responder se guarda la nueva huella (historial + respuesta), así que el siguiente turno vuelve
-   a reanudar. Un fallo de verificación solo cuesta un replay, nunca una respuesta incorrecta.
-
-## Añadir un proveedor (`ia-3`)
+## Contribuir con un nuevo modelo (example: `ia-3`)
 
 1. Crea `src/providers/ia-3/` con `selectors.ts`, `pages/chat.page.ts` (extiende `BaseChatPage`) e `index.ts`:
 
@@ -82,7 +75,7 @@ pnpm auth deepseek            # inicia sesión (y resuelve Cloudflare si aparece
 export const provider = defineProvider({
   id: "ia-3", // igual que la carpeta
   displayName: "IA 3",
-  loginUrl: "https://…/login",
+  loginUrl: "https://.../login",
   createPage: (page, env) => new Ia3ChatPage(page, env),
 });
 export const createChatCompletion = provider.createChatCompletion;
