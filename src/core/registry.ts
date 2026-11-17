@@ -6,6 +6,14 @@ import type { Logger } from "./logger.js";
 import { parseModelRef, type ModelRef } from "./model-ref.js";
 import type { Provider } from "./provider.js";
 
+/** A model id that clients can send as `model` (accounts are appended with `@<account>`). */
+export interface ModelEntry {
+  /** `<provider>` or `<provider>/<variant>`. */
+  readonly id: string;
+  readonly provider: Provider;
+  readonly variant: string | undefined;
+}
+
 const PROVIDER_ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 const ENTRY_CANDIDATES = ["index.js", "index.ts"] as const; // .js when built, .ts under tsx
 const DEFAULT_PROVIDERS_DIR = fileURLToPath(
@@ -23,6 +31,22 @@ export class ProviderRegistry {
 
   list(): Provider[] {
     return [...this.providers.values()];
+  }
+
+  /**
+   * Every model id, grouped by provider in registration order: one `<provider>/<variant>` per
+   * known variant, or the bare `<provider>` when the provider declares no variants.
+   */
+  listModels(): ModelEntry[] {
+    return this.list().flatMap((provider): ModelEntry[] =>
+      provider.variants.length > 0
+        ? provider.variants.map((variant) => ({
+            id: `${provider.id}/${variant}`,
+            provider,
+            variant,
+          }))
+        : [{ id: provider.id, provider, variant: undefined }],
+    );
   }
 
   get(id: string): Provider | undefined {

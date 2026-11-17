@@ -17,7 +17,7 @@ const HELP = `pai - OpenAI-compatible gateway for AI chat web UIs
 Usage:
   pnpm start | pnpm serve                       Start the OpenAI-compatible server
   pnpm auth <provider> [--account <name>]       Open a visible browser to prepare a session
-  pnpm providers                                List providers and their accounts
+  pnpm providers                                List providers, their models and accounts
 
 Examples:
   pnpm auth stupid-1
@@ -104,14 +104,17 @@ async function auth(
 async function list(): Promise<void> {
   const { logger, profiles } = getRuntime();
   const registry = await discoverProviders(logger);
+  const models = registry.listModels();
   for (const provider of registry.list()) {
     const accounts = await profiles.listAccounts(provider.id);
-    const variants = provider.variants.length
-      ? `  variants: ${provider.variants.join(", ")}`
-      : "";
+    console.log(`${provider.id}  ${provider.displayName}`);
     console.log(
-      `${provider.id}  ${provider.displayName}  accounts: ${accounts.join(", ")}${variants}`,
+      `  accounts: ${accounts.join(", ")}  (pin one with <model>@<account>)`,
     );
+    for (const model of models) {
+      if (model.provider === provider) console.log(`  ${model.id}`);
+    }
+    console.log();
   }
 }
 

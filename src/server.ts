@@ -74,14 +74,14 @@ export function createApp(deps: ServerDeps): Express {
     });
     const data: ReturnType<typeof entry>[] = [];
 
+    const models = registry.listModels();
     for (const provider of registry.list()) {
-      data.push(entry(provider.id));
-      for (const variant of provider.variants)
-        data.push(entry(`${provider.id}-${variant}`));
+      const own = models.filter((model) => model.provider === provider);
+      for (const model of own) data.push(entry(model.id));
       const accounts = await profiles.listAccounts(provider.id);
       if (accounts.length > 1) {
         for (const account of accounts)
-          data.push(entry(`${provider.id}@${account}`));
+          for (const model of own) data.push(entry(`${model.id}@${account}`));
       }
     }
     res.json({ object: "list", data });
