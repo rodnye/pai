@@ -20,6 +20,14 @@ import {
 } from "../errors.js";
 import type { Logger } from "../logger.js";
 import { buildChatCompletion } from "../openai/response.js";
+import {
+  buildToolInstructions,
+  buildToolReminder,
+  parseToolCalls,
+  renderAssistantTurn,
+  toOpenAIToolCalls,
+  type ParsedReply,
+} from "../openai/tools.js";
 import type {
   ChatCompletionRequest,
   ChatCompletionResponse,
@@ -65,7 +73,37 @@ export async function runCompletion(
   const pageEnv = definition.pageEnv?.(config) ?? config;
 
   const turns = normalizeMessages(request.messages);
-  const conversation = splitConversation(turns);
+  const tools =
+    request.tool_choice === "none"
+      ? []
+      : (request.tools ?? []).map((tool) => tool.function);
+  const toolNames = new Set(tools.map((tool) => tool.name));
+  const split = splitConversation(turns);
+  // The tool catalogue travels with the system instructions, so it is part of the fingerprint:
+  // a different tool set never resumes a chat primed with another one.
+  const conversation: SplitConversation =
+    tools.length > 0
+      ? {
+          ...split,
+          system: [split.system, buildToolInstructions(tools)]
+            .filter(Boolean)
+            .join("\n\n"),
+        }
+      : split;
+  // Sent with the current message only; it is not part of the stored history.
+  const reminder =
+    tools.length > 0
+      ? buildToolReminder(request.tool_choice, request.parallel_tool_calls)
+      : "";
+  const currentText = reminder
+    ? `${conversation.current.content}\n\n${reminder}`
+    : conversation.current.content;
+  const parseReply = (reply: string): ParsedReply => {
+    const parsed = parseToolCalls(reply, toolNames);
+    return request.parallel_tool_calls === false
+      ? { ...parsed, calls: parsed.calls.slice(0, 1) }
+      : parsed;
+  };
 
   // A cached chat only helps if it lives in an account we are allowed to use.
   const hit =
@@ -93,6 +131,11 @@ export async function runCompletion(
         executeTurn({
           chat: definition.createPage(page, pageEnv),
           conversation,
+          currentText,
+          canonical: (text) =>
+            toolNames.size > 0
+              ? canonicalReply(parseToolCalls(text, toolNames))
+              : text,
           cached,
           variant: options.variant,
           limits: { maxHistoryChars: config.maxHistoryChars },
@@ -100,6 +143,15 @@ export async function runCompletion(
         }),
       definition.browser,
     );
+
+    const parsed: ParsedReply =
+      toolNames.size > 0
+        ? parseReply(result.reply)
+        : { content: result.reply, calls: [] };
+    if (parsed.calls.length > 0)
+      log.info(
+        `tool calls: ${parsed.calls.map((call) => call.name).join(", ")}`,
+      );
 
     if (result.sessionId) {
       await sessions.advance(cached, {
@@ -111,7 +163,7 @@ export async function runCompletion(
           history: [
             ...conversation.history,
             conversation.current,
-            { role: "assistant", content: result.reply },
+            { role: "assistant", content: canonicalReply(parsed) },
           ],
         }),
         updatedAt: Date.now(),
@@ -134,7 +186,8 @@ export async function runCompletion(
 
     return buildChatCompletion({
       model: request.model,
-      content: result.reply,
+      content: parsed.content,
+      toolCalls: toOpenAIToolCalls(parsed.calls),
       promptText: turns.map((turn) => turn.content).join("\n"),
     });
   } catch (error) {
@@ -157,21 +210,41 @@ export async function runCompletion(
   }
 }
 
+/** What the client will echo back for this reply (text + tool calls in the canonical format). */
+const canonicalReply = (parsed: ParsedReply): string =>
+  renderAssistantTurn(parsed.content, parsed.calls);
+
 async function executeTurn(input: {
   chat: ChatPage;
   conversation: SplitConversation;
+  /** Current message as sent (may carry a per-turn reminder). */
+  currentText: string;
+  /** Normalises assistant text read from the page before comparing it with the history. */
+  canonical: (text: string) => string;
   cached: SessionRecord | undefined;
   variant: string | undefined;
   limits: PromptLimits;
   log: Logger;
 }): Promise<TurnResult> {
-  const { chat, conversation, cached, variant, limits, log } = input;
+  const {
+    chat,
+    conversation,
+    currentText,
+    canonical,
+    cached,
+    variant,
+    limits,
+    log,
+  } = input;
 
   // 1) Fast path: continue the chat that already holds this exact history.
   if (cached) {
     const reopened = await chat.openSession(cached.sessionId);
-    if (reopened && (await historyStillMatches(chat, conversation))) {
-      const reply = await chat.sendMessage(conversation.current.content);
+    if (
+      reopened &&
+      (await historyStillMatches(chat, conversation, canonical))
+    ) {
+      const reply = await chat.sendMessage(currentText);
       return {
         reply,
         mode: "resumed",
@@ -196,11 +269,11 @@ async function executeTurn(input: {
         {
           system: conversation.system,
           history: conversation.history,
-          current: conversation.current.content,
+          current: currentText,
         },
         limits,
       )
-    : buildFirstPrompt(conversation.system, conversation.current.content);
+    : buildFirstPrompt(conversation.system, currentText);
 
   const reply = await chat.sendMessage(prompt);
   return {
@@ -217,6 +290,7 @@ async function executeTurn(input: {
 async function historyStillMatches(
   chat: ChatPage,
   conversation: SplitConversation,
+  canonical: (text: string) => string,
 ): Promise<boolean> {
   const expected = conversation.history.findLast(
     (turn) => turn.role === "assistant",
@@ -225,6 +299,7 @@ async function historyStillMatches(
   const actual = await chat.readLastAssistantMessage();
   return (
     actual !== undefined &&
-    collapseWhitespace(actual) === collapseWhitespace(expected.content)
+    collapseWhitespace(canonical(actual)) ===
+      collapseWhitespace(expected.content)
   );
 }

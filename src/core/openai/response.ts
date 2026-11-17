@@ -1,5 +1,10 @@
 import { randomUUID } from "node:crypto";
-import type { ChatCompletionChunk, ChatCompletionResponse } from "./schema.js";
+import type {
+  ChatCompletionChunk,
+  ChatCompletionResponse,
+  FinishReason,
+} from "./schema.js";
+import type { OpenAIToolCall } from "./tools.js";
 
 /** Rough estimate (~4 chars/token): web chats do not report real token usage. */
 export function estimateTokens(text: string): number {
@@ -9,10 +14,15 @@ export function estimateTokens(text: string): number {
 export function buildChatCompletion(input: {
   model: string;
   content: string;
+  toolCalls?: OpenAIToolCall[];
   promptText: string;
 }): ChatCompletionResponse {
+  const toolCalls = input.toolCalls?.length ? input.toolCalls : undefined;
   const promptTokens = estimateTokens(input.promptText);
-  const completionTokens = estimateTokens(input.content);
+  const completionTokens = estimateTokens(
+    input.content +
+      (toolCalls?.map((call) => call.function.arguments).join("") ?? ""),
+  );
   return {
     id: `chatcmpl-${randomUUID()}`,
     object: "chat.completion",
@@ -21,9 +31,15 @@ export function buildChatCompletion(input: {
     choices: [
       {
         index: 0,
-        message: { role: "assistant", content: input.content, refusal: null },
+        message: {
+          role: "assistant",
+          // OpenAI sends null content when the turn is only tool calls.
+          content: toolCalls && input.content === "" ? null : input.content,
+          refusal: null,
+          ...(toolCalls ? { tool_calls: toolCalls } : {}),
+        },
         logprobs: null,
-        finish_reason: "stop",
+        finish_reason: toolCalls ? "tool_calls" : "stop",
       },
     ],
     usage: {
@@ -37,7 +53,7 @@ export function buildChatCompletion(input: {
 export function buildChunk(
   base: Pick<ChatCompletionResponse, "id" | "created" | "model">,
   delta: ChatCompletionChunk["choices"][number]["delta"],
-  finishReason: "stop" | null,
+  finishReason: FinishReason | null,
 ): ChatCompletionChunk {
   return {
     id: base.id,

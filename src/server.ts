@@ -137,11 +137,18 @@ export function createApp(deps: ServerDeps): Express {
 
     try {
       const completion = await provider.createChatCompletion(request, options);
-      const content = completion.choices[0]?.message.content ?? "";
+      const choice = completion.choices[0];
+      const content = choice?.message.content ?? "";
       send(buildChunk(completion, { role: "assistant" }, null));
       for (const piece of chunkText(content, 48))
         send(buildChunk(completion, { content: piece }, null));
-      send(buildChunk(completion, {}, "stop"));
+      // Each call goes out whole in a single delta (clients concatenate `arguments` by index).
+      choice?.message.tool_calls?.forEach((call, index) =>
+        send(
+          buildChunk(completion, { tool_calls: [{ index, ...call }] }, null),
+        ),
+      );
+      send(buildChunk(completion, {}, choice?.finish_reason ?? "stop"));
     } catch (error) {
       const normalized = normalizeError(error);
       logger.error(`Streaming completion failed: ${normalized.message}`);
