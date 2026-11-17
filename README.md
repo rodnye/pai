@@ -1,6 +1,6 @@
 <div align="center">
 
-<h1>pai</h1>
+<h1>pai 🥧</h1>
 
 <b>P</b>ortal-to-<b>A</b>.<b>I</b>
 <br/>
