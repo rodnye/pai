@@ -1,5 +1,6 @@
 import path from "node:path";
 import { z } from "zod";
+import type { DelayRange } from "./utils/human-delay.js";
 
 const booleanString = z
   .enum(["true", "false"])
@@ -13,10 +14,18 @@ const envSchema = z.object({
   PAI_HEADLESS: booleanString.prefault("true"),
   PAI_BROWSER_CHANNEL: z.string().min(1).optional(),
   PAI_CONTEXT_IDLE_MS: z.coerce.number().int().positive().default(300_000),
+  PAI_PAGE_IDLE_MS: z.coerce.number().int().positive().default(120_000),
   PAI_RESPONSE_TIMEOUT_MS: z.coerce.number().int().positive().default(120_000),
   PAI_NAVIGATION_TIMEOUT_MS: z.coerce.number().int().positive().default(20_000),
   PAI_STABLE_MS: z.coerce.number().int().positive().default(1_500),
   PAI_POLL_MS: z.coerce.number().int().positive().default(250),
+  PAI_TYPE_DELAY_MIN_MS: z.coerce.number().int().nonnegative().default(400),
+  PAI_TYPE_DELAY_MAX_MS: z.coerce.number().int().nonnegative().default(1_500),
+  PAI_SEND_DELAY_MIN_MS: z.coerce.number().int().nonnegative().default(200),
+  PAI_SEND_DELAY_MAX_MS: z.coerce.number().int().nonnegative().default(900),
+  PAI_TYPE_MAX_CHARS: z.coerce.number().int().nonnegative().default(80),
+  PAI_KEY_DELAY_MIN_MS: z.coerce.number().int().nonnegative().default(35),
+  PAI_KEY_DELAY_MAX_MS: z.coerce.number().int().nonnegative().default(140),
   PAI_MAX_HISTORY_CHARS: z.coerce.number().int().positive().default(60_000),
   PAI_SESSION_TTL_HOURS: z.coerce.number().positive().default(168),
   PAI_LOG_LEVEL: z
@@ -32,10 +41,19 @@ export interface Config {
   readonly headless: boolean;
   readonly browserChannel: string | undefined;
   readonly contextIdleMs: number;
+  readonly pageIdleMs: number;
   readonly responseTimeoutMs: number;
   readonly navigationTimeoutMs: number;
   readonly stableMs: number;
   readonly pollMs: number;
+  /** Random pause before typing the prompt. */
+  readonly typeDelay: DelayRange;
+  /** Random pause between typing the prompt and sending it. */
+  readonly sendDelay: DelayRange;
+  /** Characters typed key by key; the rest of a longer prompt is inserted at once. 0 = paste all. */
+  readonly typeMaxChars: number;
+  /** Random pause between keystrokes while typing. */
+  readonly keyDelay: DelayRange;
   readonly maxHistoryChars: number;
   readonly sessionTtlMs: number;
   readonly logLevel: "debug" | "info" | "warn" | "error" | "silent";
@@ -57,6 +75,21 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   }
 
   const e = parsed.data;
+  const typeDelay = delayRange(
+    "PAI_TYPE_DELAY",
+    e.PAI_TYPE_DELAY_MIN_MS,
+    e.PAI_TYPE_DELAY_MAX_MS,
+  );
+  const sendDelay = delayRange(
+    "PAI_SEND_DELAY",
+    e.PAI_SEND_DELAY_MIN_MS,
+    e.PAI_SEND_DELAY_MAX_MS,
+  );
+  const keyDelay = delayRange(
+    "PAI_KEY_DELAY",
+    e.PAI_KEY_DELAY_MIN_MS,
+    e.PAI_KEY_DELAY_MAX_MS,
+  );
   return {
     host: e.HOST,
     port: e.PORT,
@@ -65,12 +98,26 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     headless: e.PAI_HEADLESS,
     browserChannel: e.PAI_BROWSER_CHANNEL,
     contextIdleMs: e.PAI_CONTEXT_IDLE_MS,
+    pageIdleMs: e.PAI_PAGE_IDLE_MS,
     responseTimeoutMs: e.PAI_RESPONSE_TIMEOUT_MS,
     navigationTimeoutMs: e.PAI_NAVIGATION_TIMEOUT_MS,
     stableMs: e.PAI_STABLE_MS,
     pollMs: e.PAI_POLL_MS,
+    typeDelay,
+    sendDelay,
+    typeMaxChars: e.PAI_TYPE_MAX_CHARS,
+    keyDelay,
     maxHistoryChars: e.PAI_MAX_HISTORY_CHARS,
     sessionTtlMs: e.PAI_SESSION_TTL_HOURS * 3_600_000,
     logLevel: e.PAI_LOG_LEVEL,
   };
+}
+
+function delayRange(name: string, minMs: number, maxMs: number): DelayRange {
+  if (minMs > maxMs) {
+    throw new Error(
+      `Invalid configuration: ${name}_MIN_MS (${minMs}) must be <= ${name}_MAX_MS (${maxMs})`,
+    );
+  }
+  return { minMs, maxMs };
 }
