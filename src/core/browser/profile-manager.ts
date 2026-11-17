@@ -4,6 +4,7 @@ import { chromium, type BrowserContext, type Page } from "playwright";
 import type { Config } from "../config.js";
 import { AccountNotFoundError, BadRequestError } from "../errors.js";
 import type { Logger } from "../logger.js";
+import type { BrowserOptions } from "../provider.js";
 import { KeyedQueue } from "../utils/keyed-queue.js";
 
 export const DEFAULT_ACCOUNT = "default";
@@ -19,10 +20,13 @@ const isNotFound = (error: unknown): boolean =>
  * - A Chromium profile cannot be opened by two processes, so requests for the same account are
  *   serialised through a queue, while different accounts run in parallel.
  * - Contexts are launched lazily, reused, and closed after `contextIdleMs` without traffic.
+ * - Each account keeps one tab that is reused between requests and closed after `pageIdleMs`.
  */
 export class ProfileManager {
   private readonly contexts = new Map<string, Promise<BrowserContext>>();
   private readonly idleTimers = new Map<string, NodeJS.Timeout>();
+  private readonly pages = new Map<string, Page>();
+  private readonly pageTimers = new Map<string, NodeJS.Timeout>();
   private readonly queue = new KeyedQueue();
   private readonly log: Logger;
 
@@ -98,24 +102,78 @@ export class ProfileManager {
     providerId: string,
     account: string,
     task: (page: Page) => Promise<T>,
+    browser: BrowserOptions = {},
   ): Promise<T> {
     const key = this.key(providerId, account);
     const userDir = this.userDir(providerId, account);
 
     return this.queue.run(key, async () => {
       this.cancelIdleClose(key);
+      this.cancelPageIdleClose(key);
       try {
-        const context = await this.acquireContext(key, userDir);
-        const page = await context.newPage();
+        const context = await this.acquireContext(key, userDir, browser);
+        const page = await this.acquirePage(key, context);
         try {
-          return await task(page);
-        } finally {
-          await page.close().catch(() => undefined);
+          const result = await task(page);
+          this.schedulePageIdleClose(key);
+          return result;
+        } catch (error) {
+          // A failed run may leave the tab in an odd state (dialogs, half-loaded page): start clean next time.
+          await this.discardPage(key);
+          throw error;
         }
       } finally {
         this.scheduleIdleClose(key);
       }
     });
+  }
+
+  /**
+   * Reuses the account's tab across requests instead of opening/closing one per request, which
+   * looks robotic. Prefers the tab Chromium opens with the persistent context.
+   */
+  private async acquirePage(
+    key: string,
+    context: BrowserContext,
+  ): Promise<Page> {
+    const existing = this.pages.get(key);
+    if (existing && !existing.isClosed() && existing.context() === context) {
+      return existing;
+    }
+    const page =
+      context.pages().find((candidate) => !candidate.isClosed()) ??
+      (await context.newPage());
+    this.pages.set(key, page);
+    page.once("close", () => {
+      if (this.pages.get(key) === page) this.pages.delete(key);
+    });
+    return page;
+  }
+
+  private async discardPage(key: string): Promise<void> {
+    this.cancelPageIdleClose(key);
+    const page = this.pages.get(key);
+    this.pages.delete(key);
+    await page?.close().catch(() => undefined);
+  }
+
+  private cancelPageIdleClose(key: string): void {
+    clearTimeout(this.pageTimers.get(key));
+    this.pageTimers.delete(key);
+  }
+
+  private schedulePageIdleClose(key: string): void {
+    this.cancelPageIdleClose(key);
+    const timer: NodeJS.Timeout = setTimeout(() => {
+      void this.queue.run(key, async () => {
+        if (this.pageTimers.get(key) !== timer) return; // the tab was used since this timer was armed
+        this.pageTimers.delete(key);
+        await this.discardPage(key);
+        this.log.debug(`Closed idle tab of ${key}`);
+      });
+    }, this.config.pageIdleMs);
+    timer.unref();
+    this.pageTimers.set(key, timer);
   }
 
   /**
@@ -127,9 +185,10 @@ export class ProfileManager {
     account: string,
     loginUrl: string,
     waitForUser: () => Promise<void>,
+    browser: BrowserOptions = {},
   ): Promise<void> {
     const userDir = this.userDir(providerId, account);
-    const context = await this.launch(userDir, false);
+    const context = await this.launch(userDir, false, browser);
     const closedByUser = new Promise<void>((resolve) =>
       context.once("close", () => resolve()),
     );
@@ -152,6 +211,8 @@ export class ProfileManager {
   async closeAll(): Promise<void> {
     for (const timer of this.idleTimers.values()) clearTimeout(timer);
     this.idleTimers.clear();
+    for (const timer of this.pageTimers.values()) clearTimeout(timer);
+    this.pageTimers.clear();
     await Promise.allSettled(
       [...this.contexts.keys()].map((key) => this.closeContext(key)),
     );
@@ -168,12 +229,13 @@ export class ProfileManager {
   private acquireContext(
     key: string,
     userDir: string,
+    browser: BrowserOptions,
   ): Promise<BrowserContext> {
     const existing = this.contexts.get(key);
     if (existing) return existing;
 
     this.log.info(`Launching browser profile ${userDir}`);
-    const launched = this.launch(userDir, this.config.headless);
+    const launched = this.launch(userDir, this.config.headless, browser);
     this.contexts.set(key, launched);
 
     const forget = (): void => {
@@ -183,9 +245,14 @@ export class ProfileManager {
     return launched;
   }
 
-  private launch(userDir: string, headless: boolean): Promise<BrowserContext> {
+  private launch(
+    userDir: string,
+    headless: boolean,
+    browser: BrowserOptions,
+  ): Promise<BrowserContext> {
     return chromium.launchPersistentContext(userDir, {
       headless,
+      locale: browser.locale,
       channel: this.config.browserChannel,
       viewport: headless ? { width: 1366, height: 900 } : null,
       args: ["--disable-blink-features=AutomationControlled"],
@@ -196,6 +263,8 @@ export class ProfileManager {
     const pending = this.contexts.get(key);
     if (!pending) return;
     this.contexts.delete(key);
+    this.cancelPageIdleClose(key);
+    this.pages.delete(key);
     try {
       await (await pending).close();
       this.log.debug(`Closed browser profile ${key}`);
