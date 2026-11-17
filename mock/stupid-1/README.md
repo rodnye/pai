@@ -1,16 +1,16 @@
-# Mock de ia-1
+# Mock de stupid-1
 
-Sitio local para probar `ia-1` de forma mockeada e interceptar los prompts enviados por agentes como OpenCode
+Sandbox para probar `stupid-1` de forma mockeada e interceptar los prompts enviados por agentes como Claude Code/OpenCode
 
 ## Uso
 
 ```bash
 # terminal 1: el mock (http://127.0.0.1:4010)
-pnpm mock:ia-1
+pnpm mock:stupid-1
 
 # terminal 2: pai apuntando al mock (ya viene en .env.example)
-#   PAI_IA1_BASE_URL=http://127.0.0.1:4010
-pnpm auth ia-1        # abre /login: pulsa "Use demo account" (demo@ia-1.test / demo1234) y ENTER en la CLI
+#   PAI_STUPID1_BASE_URL=http://127.0.0.1:4010
+pnpm auth stupid-1        # abre /login: pulsa "Use demo account" (demo@ia-1.test / demo1234) y ENTER en la CLI
 pnpm start
 
 curl http://127.0.0.1:3000/v1/chat/completions \

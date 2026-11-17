@@ -20,8 +20,8 @@ Usage:
   pnpm providers                                List providers and their accounts
 
 Examples:
-  pnpm auth ia-1
-  pnpm auth ia-2 --account work
+  pnpm auth stupid-1
+  pnpm auth deepseek --account work
   pnpm auth deepseek
 `;
 

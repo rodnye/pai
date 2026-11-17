@@ -77,7 +77,7 @@ export function createApp(deps: ServerDeps): Express {
     for (const provider of registry.list()) {
       data.push(entry(provider.id));
       for (const variant of provider.variants)
-        data.push(entry(`${provider.id}/${variant}`));
+        data.push(entry(`${provider.id}-${variant}`));
       const accounts = await profiles.listAccounts(provider.id);
       if (accounts.length > 1) {
         for (const account of accounts)
