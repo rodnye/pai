@@ -43,10 +43,10 @@ curl http://127.0.0.1:3000/v1/chat/completions \
   -d '{"model":"deepseek/think","messages":[{"role":"user","content":"oh hi, generate a powerful cat"}]}'
 ```
 
-Con el SDK de OpenAI: 
+Con el SDK de OpenAI:
 
 ```ts
-const ai = new OpenAI({ baseURL: "http://127.0.0.1:3000/v1", apiKey: "pai" })
+const ai = new OpenAI({ baseURL: "http://127.0.0.1:3000/v1", apiKey: "pai" });
 ```
 
 ## DeepSeek
@@ -55,17 +55,66 @@ const ai = new OpenAI({ baseURL: "http://127.0.0.1:3000/v1", apiKey: "pai" })
 pnpm auth deepseek            # inicia sesión (y resuelve Cloudflare si aparece), luego ENTER
 ```
 
-| Modelo                  | DeepThink              | Search                 |
-| ----------------------- | ---------------------- | ---------------------- |
-| `deepseek/chat`         | off                    | off                    |
-| `deepseek/think`        | on                     | off                    |
-| `deepseek/search`       | off                    | on                     |
-| `deepseek/think-search` | on                     | on                     |
+| Modelo                  | DeepThink | Search |
+| ----------------------- | --------- | ------ |
+| `deepseek/chat`         | off       | off    |
+| `deepseek/think`        | on        | off    |
+| `deepseek/search`       | off       | on     |
+| `deepseek/think-search` | on        | on     |
 
 - El navegador se abre con locale `en-US`: los selectores usan textos en inglés ("Message DeepSeek",
   "New chat", "Read aloud"). Si la cuenta tiene otro idioma configurado, cámbialo a inglés.
 - Solo se devuelve la respuesta final (`.ds-assistant-message-main-content`); el razonamiento se descarta.
 - Si Cloudflare bloquea en headless, prueba `PAI_HEADLESS=false` o `PAI_BROWSER_CHANNEL=chrome`.
+
+## Integración con agentes de código
+
+> [!NOTE]
+> Los chats web no tienen function calling nativo, así que pai lo **emula por prompt**: si la petición
+> trae `tools`, añade el catálogo y una convención (bloques ` \`\`\`tool_call ` con JSON) a las
+> instrucciones, y convierte la respuesta en `tool_calls` estándar de OpenAI (`finish_reason: "tool_calls"`).
+> Los resultados (`role: "tool"`) vuelven al chat como bloques `<tool_result>`. Funciona con `tool_choice`
+> (`auto`, `none`, `required` o una función concreta) y `parallel_tool_calls: false`. Depende de que el
+> modelo respete el formato: si no lo hace, la respuesta llega como texto normal.
+
+Levanta primero el servidor (`pnpm start`). Si definiste `PAI_API_KEY`, úsala como API key en los
+ejemplos de abajo; si no, cualquier valor sirve. Los ids disponibles salen de
+`curl http://127.0.0.1:3000/v1/models`.
+
+### OpenCode
+
+OpenCode acepta proveedores compatibles con OpenAI. Añade esto a `opencode.json` (en el proyecto) o a
+`~/.config/opencode/opencode.json` (global):
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "pai": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "pai",
+      "options": {
+        "baseURL": "http://127.0.0.1:3000/v1",
+        "apiKey": "{env:PAI_API_KEY}"
+      },
+      "models": {
+        "deepseek/chat": { "name": "DeepSeek (web)" },
+        "deepseek/think": { "name": "DeepSeek DeepThink (web)" },
+        "deepseek/search": { "name": "DeepSeek Search (web)" },
+        "deepseek/think-search": { "name": "DeepSeek DeepThink + Search (web)" }
+      }
+    }
+  }
+}
+```
+
+Después elige el modelo con `/models` dentro de OpenCode, o arráncalo directamente:
+
+```bash
+opencode -m pai/deepseek/think
+```
+
+Para fijar una cuenta añade el sufijo al id del modelo, p. ej. `"deepseek/think@work"`.
 
 ## Contribuir con un nuevo modelo (example: `ia-3`)
 
@@ -98,5 +147,7 @@ No hay que tocar el registro, el servidor ni la CLI. Las carpetas que empiezan p
 
 ## Limitaciones
 
+- Tool calling emulado por prompt (ver [Integración con agentes de código](#integración-con-agentes-de-código)):
+  los `tool_calls` llegan completos al final, no se transmiten mientras se generan.
 - Solo texto; `temperature`, `max_tokens`, etc. se ignoran. `usage` es una estimación muy vaga, no te guies po ella.
 - `stream: true` reproduce la respuesta ya completa como SSE (con keep-alive mientras se genera).
