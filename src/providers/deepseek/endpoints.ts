@@ -1,17 +1,9 @@
-const DEFAULT_BASE_URL = "https://chat.deepseek.com";
-
-/** Resolved lazily so the value set in `.env` (loaded by the CLI) is always honoured. */
-export function deepseekUrl(pathname = "/"): string {
-  return new URL(
-    pathname,
-    process.env.PAI_DEEPSEEK_BASE_URL || DEFAULT_BASE_URL,
-  ).toString();
-}
+export const deepseekUrl = (pathname = "/") =>
+  new URL(pathname, "https://chat.deepseek.com").toString();
 
 /** Chats live at /a/chat/s/<uuid>. */
-export function deepseekSessionUrl(sessionId: string): string {
-  return deepseekUrl(`/a/chat/s/${encodeURIComponent(sessionId)}`);
-}
+export const deepseekSessionUrl = (sessionId: string) =>
+  deepseekUrl(`/a/chat/s/${encodeURIComponent(sessionId)}`);
 
 export function parseDeepseekSessionId(url: string): string | undefined {
   try {

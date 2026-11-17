@@ -1,17 +1,17 @@
 /**
- * `deepseek/<variant>` maps to the two composer toggles. Without a variant the toggles are left as
+ * `deepseek/<variant>[@<account>]` maps to the two composer toggles. Without a variant the toggles are left as
  * they are in the profile (whatever was set during `pnpm auth deepseek`).
  */
 export interface DeepseekToggles {
-  readonly deepThink: boolean;
+  readonly think: boolean;
   readonly search: boolean;
 }
 
 export const DEEPSEEK_VARIANTS = {
-  chat: { deepThink: false, search: false },
-  think: { deepThink: true, search: false },
-  search: { deepThink: false, search: true },
-  "think-search": { deepThink: true, search: true },
+  chat: { think: false, search: false },
+  think: { think: true, search: false },
+  search: { think: false, search: true },
+  "think-search": { think: true, search: true },
 } as const satisfies Record<string, DeepseekToggles>;
 
 export type DeepseekVariant = keyof typeof DEEPSEEK_VARIANTS;

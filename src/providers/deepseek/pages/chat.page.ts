@@ -33,28 +33,26 @@ interface ComposerSnapshot {
   readonly notice: string;
 }
 
-const signedOutError = (): ProviderAutomationError =>
+const signedOutError = () =>
   new ProviderAutomationError(
     "DeepSeek: this profile is not signed in. Run `pnpm auth deepseek` (add --account <name> if needed).",
   );
 
-const challengeError = (): ProviderAutomationError =>
+const challengeError = () =>
   new ProviderAutomationError(
     "DeepSeek: Cloudflare challenge is blocking the page. Solve it once with `pnpm auth deepseek`, " +
       "and consider PAI_HEADLESS=false or PAI_BROWSER_CHANNEL=chrome.",
   );
 
 /**
- * DeepSeek chat (chat.deepseek.com). Differences with the generic "textarea -> Enter -> div" flow,
- * all taken from INFORME_PLAYWRIGHT_DEEPSEEK.md:
- *
+ * DeepSeek chat (chat.deepseek.com).
  * - The message list is virtualised, so "count bubbles before/after" is unreliable. Bubbles present
  *   before sending are stamped with `data-pai-seen`; the answer is the last un-stamped assistant one.
  * - Completion = stop icon gone + "Read aloud" action bar present + text stable for `stableMs`.
  *   If "Read aloud" never shows up (UI change), a longer stability window is used instead.
  * - The prompt is sent by clicking the send button (Enter behaviour was not verified).
  * - Sign-in redirects and the Cloudflare challenge raise descriptive errors instead of timeouts.
- * - Variants (`deepseek/think`, ...) drive the DeepThink and Search toggles.
+ * - Variants (`deepseek/think`, `deepseek/think-search@work`, ...) drive the DeepThink and Search toggles.
  */
 export class DeepseekChatPage extends BaseChatPage {
   protected readonly baseUrl = deepseekUrl("/");
@@ -99,11 +97,14 @@ export class DeepseekChatPage extends BaseChatPage {
         "model_not_found",
       );
     }
-    await this.setToggle("DeepThink", wanted.deepThink);
+    await this.setToggle("DeepThink", wanted.think);
     await this.setToggle("Search", wanted.search);
   }
 
-  private async setToggle(label: string, on: boolean): Promise<void> {
+  private async setToggle(
+    label: "DeepThink" | "Search",
+    on: boolean,
+  ): Promise<void> {
     const toggle = this.page
       .locator(DEEPSEEK_DOM.toggle)
       .filter({ hasText: new RegExp(`^\\s*${label}\\b`) })

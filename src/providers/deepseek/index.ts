@@ -7,7 +7,6 @@ export const provider = defineProvider({
   id: "deepseek",
   displayName: "DeepSeek (chat.deepseek.com)",
   loginUrl: deepseekUrl("/sign_in"),
-  sessionStrategy: "resumable",
   variants: Object.keys(DEEPSEEK_VARIANTS),
   // Selectors rely on English UI text ("Message DeepSeek", "New chat", "Read aloud").
   browser: { locale: "en-US" },
